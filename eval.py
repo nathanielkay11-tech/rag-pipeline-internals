@@ -46,18 +46,20 @@ examples = [
 ]
 
 dataset_name = "legal-rag-eval-v1"
-existing = list(client.list_datasets(dataset_name=dataset_name))
-if not existing:
-    print("Creating dataset...")
-    dataset = client.create_dataset(dataset_name)
-    client.create_examples(
-        inputs=[e["inputs"] for e in examples],
-        outputs=[e["outputs"] for e in examples],
-        dataset_id=dataset.id,
-    )
-    print("Dataset created.")
-else:
-    print("Dataset already exists, skipping creation.")
+
+if __name__ == "__main__":
+    existing = list(client.list_datasets(dataset_name=dataset_name))
+    if not existing:
+        print("Creating dataset...")
+        dataset = client.create_dataset(dataset_name)
+        client.create_examples(
+            inputs=[e["inputs"] for e in examples],
+            outputs=[e["outputs"] for e in examples],
+            dataset_id=dataset.id,
+        )
+        print("Dataset created.")
+    else:
+        print("Dataset already exists, skipping creation.")
 
 def predict(inputs):
     return {"answer": rag_chain.invoke(inputs["question"])}
@@ -76,14 +78,15 @@ Is the predicted answer correct and complete compared to the expected answer?
 Reply with only: CORRECT or INCORRECT"""
 
     response = judge.invoke(prompt)
-    score = 1 if "CORRECT" in response.content.upper() else 0
+    score = 0 if "INCORRECT" in response.content.upper() else 1
     return {"key": "correctness", "score": score}
 
-print("Running evaluation...")
-results = evaluate(
-    predict,
-    data=dataset_name,
-    evaluators=[score_answer],
-    experiment_prefix="baseline",
-)
-print("Evaluation complete. Check LangSmith for results.")
+if __name__ == "__main__":
+    print("Running evaluation...")
+    results = evaluate(
+        predict,
+        data=dataset_name,
+        evaluators=[score_answer],
+        experiment_prefix="baseline",
+    )
+    print("Evaluation complete. Check LangSmith for results.")

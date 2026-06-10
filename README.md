@@ -128,6 +128,33 @@ Document chunks carry minimal metadata: source filename and page number. There i
 
 ---
 
+## 🔄 Automated Improvement Loop
+
+This project includes a self-correcting evaluation loop built on top of the base RAG pipeline. When the pipeline's performance drops below an acceptable threshold, the loop automatically attempts to fix it without human intervention.
+
+It consists of three files added to the original build:
+
+| File | Role |
+|---|---|
+| `eval_runner.py` | Runs the evaluation suite and returns scores as numbers a program can act on, rather than just reporting to a dashboard |
+| `fix_agent.py` | Defines exactly what the agent is allowed to fix, how it should fix it, and what it must never touch. Uses Claude Sonnet for reasoning and works only on a separate git branch, never the live pipeline |
+| `loop.py` | Orchestrates the full cycle: run evals, check scores, attempt a fix if below threshold, re-run evals, repeat up to 3 times, stop and report |
+
+### Guardrails
+
+- Only `k` and prompt template text are tunable
+- `eval.py` and the golden dataset are read-only and cannot be modified
+- Input tokens cannot increase by more than 50%
+- All fixes happen on branches — nothing reaches `main` without human approval
+
+### Known gaps
+
+- Loop is manually triggered, not scheduled
+- Loop runs do not push scored results to LangSmith experiments
+- No cross-run memory — Sonnet may try the same fix across multiple runs
+
+---
+
 ## 🔬 What LangSmith Shows You
 
 LangSmith traces every step of every query. For each run you can see:
@@ -167,6 +194,9 @@ rag-pipeline-internals/
 ├── ingest.py            ← PDF loader, chunker, Voyage embeddings, Chroma write
 ├── rag.py               ← Retriever, prompt, Claude Haiku, LangSmith tracing
 ├── eval.py              ← Golden dataset, Claude-as-judge scoring, LangSmith experiments
+├── eval_runner.py       ← Programmatic eval runner returning structured scores and token counts
+├── fix_agent.py         ← Sonnet-powered fix agent, branch-only, constrained to k and prompt
+├── loop.py              ← Improvement loop orchestrator, max 3 attempts, token-gated
 └── test-data/           ← Synthetic legal documents — never committed
 ```
 
